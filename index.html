@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="da"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hyggetorsdag</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#fbf3f4;--fg:#3a1f2b;--card:#fff;--door:#a8446b;--lock:#d9c7ce;--done:#d9962b;--line:#ecd8de}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1318;--fg:#f4e4ea;--card:#2d1d25;--door:#b9527a;--lock:#4a3640;--done:#c78625;--line:#4a3640}}
+:root[data-theme="dark"]{--bg:#1e1318;--fg:#f4e4ea;--card:#2d1d25;--door:#b9527a;--lock:#4a3640;--done:#c78625;--line:#4a3640}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Georgia,serif;text-align:center;padding:12px}
+h1{margin:6px 0 2px;font-size:1.6rem}
+#sub{margin:0 0 6px;opacity:.85}
+#next{margin:0 0 10px;font-style:italic}
+#bar{max-width:560px;margin:0 auto 12px;height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--done);transition:width .4s}
+#grid{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.door{position:relative;aspect-ratio:1;border:0;border-radius:12px;background:var(--door);color:#fff;font:bold 1.5rem Georgia,serif;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.door small{display:block;font:.8rem sans-serif;opacity:.92;margin-top:2px}
+.door.lock{background:var(--lock);cursor:not-allowed;box-shadow:none;color:var(--fg);opacity:.8}
+.door.today{outline:3px solid #ffd166;animation:pulse 1.6s infinite}
+.door.done{background:var(--done)}
+.door.done::after{content:"✓";position:absolute;top:4px;right:8px;font-size:1rem}
+@keyframes pulse{50%{transform:scale(1.04)}}
+.shake{animation:sh .4s}@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px}
+#card{background:var(--card);max-width:440px;width:100%;border-radius:16px;padding:20px;text-align:left;max-height:92%;overflow:auto}
+#card h2{margin:2px 0 8px}
+#card h3{margin:14px 0 2px;font-size:.85rem;text-transform:uppercase;letter-spacing:.06em;color:var(--door)}
+#card p{line-height:1.5;margin:2px 0}
+#ans{margin-top:6px;font-weight:bold}
+.btn{padding:10px 16px;border:0;border-radius:10px;background:var(--door);color:#fff;font-size:1rem;margin:10px 6px 0 0;cursor:pointer}
+.btn.alt{background:var(--lock);color:var(--fg)}
+.btn.sm{padding:6px 12px;font-size:.9rem;margin:6px 0 0}
+#peek{margin:0 0 12px;padding:9px 16px;border:2px dashed var(--door);border-radius:10px;background:none;color:var(--fg);font-size:.95rem;cursor:pointer}
+#peek.on{background:var(--door);color:#fff;border-style:solid}
+</style></head><body>
+<h1>💞 Hyggetorsdag</h1>
+<p id="sub"></p>
+<p id="next"></p>
+<button id="peek">👀 Prøve: åbn alle låger</button>
+<div id="bar"><i></i></div>
+<div id="grid"></div>
+<div id="ov"><div id="card"></div></div>
+<script>
+// [titel, idé, humor, gåde, svar, fakta]
+const T=[
+['Brevet fra hjertet','Skriv en håndskrevet hilsen til en person, du ikke har talt med i lang tid. Tre linjer er nok.','Jeg elsker at give gaver, især dem jeg selv gerne vil have.','En mand skubber sin bil hen til et hotel og står pludselig uden penge. Hvad er der sket?','Han spiller Monopoly og landede på en dyr hotelgrund.','Det første frimærke i verden, Penny Black, udkom i England i 1840.'],
+['Efterårets minde','Spørg en ven eller kollega om deres bedste efterårsminde, og lyt uden at afbryde. Stil kun et opfølgende spørgsmål.','Hygge er, når man siger "bare en kop te" og bliver til aftensmad.','Du står uden for et lukket rum med tre kontakter. Kun én tænder pæren inde i rummet. Du må kun åbne døren én gang. Hvordan finder du ud af, hvilken kontakt der er den rigtige?','Tænd kontakt 1 i nogle minutter, sluk den, og tænd kontakt 2. Gå ind: Er pæren varm og slukket, er det 1. Er den tændt, er det 2. Er den kold og slukket, er det 3.','Honning fordærves næsten ikke, fordi den er så sukkerrig og indeholder så lidt vand, at bakterier har svært ved at vokse.'],
+['Noget til naboen','Bag eller køb noget lille, fx boller eller en klementin, og giv det til en nabo uden nogen særlig grund.','Naboer er mennesker, man kender af udseende, bilmærke og skraldespand.','Jeg kigger på et portræt og siger: "Brødre og søstre har jeg ingen, men den mands far er min fars søn." Hvem er på billedet?','Min egen søn. Min fars søn er mig selv, så den mands far er mig.','Et ægte smil, et såkaldt Duchenne-smil, kan ofte kendes på de små rynker omkring øjnene.'],
+['Tak-opkaldet','Ring til én og fortæl dem helt konkret, hvad de har betydet for dig. Du behøver ikke en anledning.','Det bedste ved at ringe i stedet for at skrive: Man får ikke svaret "ok" tre dage senere.','To personer spiller fem skakpartier. Hver af dem vinder tre partier, og der er ingen uafgjorte. Hvordan kan det lade sig gøre?','De spiller ikke mod hinanden. De spiller mod andre personer.','Blæksprutter har tre hjerter og blåt blod.'],
+['Gådepausen','Hold en kvarters hyggepause med te og en gåde, som kollegerne eller vennerne skal løse sammen.','En gåde er en samtale, hvor alle lader som om, de ved svaret.','Hvad kan rejse verden rundt, mens det bliver siddende i et hjørne?','Et frimærke.','Latter er smitsom. Hjernen reagerer på andres latter og får os ofte til at smile med.'],
+['Ros bag ryggen','Fortæl en tredje person noget rosende om en fælles ven eller kollega. Der er en god chance for, at det når frem.','Man siger, at ros er gratis. Alligevel bruger vi den, som om den var guld.','En snegl kravler op ad en 10 meter dyb brønd. Om dagen kravler den 3 meter op, om natten glider den 2 meter ned. Hvilken dag når den toppen?','Dag 8. Efter 7 dage er den 7 meter oppe, og på dag 8 kravler den de sidste 3 meter og er ude, før den når at glide ned.','Havoddere holder hinanden i hånden, når de sover, så de ikke driver fra hinanden.'],
+['Den hjælpende hånd','Find én travl person i dit liv og tilbyd at tage en opgave fra dem: indkøb, børnehentning, et opkald eller andet.','At tilbyde hjælp er let. At tage imod den er den rigtige udfordring.','Du står i et mørkt rum med en tændstik, et stearinlys, en petroleumslampe og en brændeovn. Hvad tænder du først?','Tændstikken.','Det første kommercielle julekort blev trykt i England i 1843.'],
+['Lys i mørketiden','Ring til eller besøg én, der kan have brug for selskab i mørketiden. En halv time gør en forskel.','Mørketiden er naturens måde at sige: "Sæt dig ind til lysene og lyt."','Jeg har en nøgle uden låse og et rum uden plads. Du kan komme ind, men ikke ud. Hvad er jeg?','Et tastatur: Det har taster, et mellemrum og en "enter".','Julemærket blev opfundet i Danmark i 1904 af postmester Einar Holbøll.'],
+['Tre julekort','Skriv tre julekort til mennesker, som du sjældent skriver til, og nævn i hvert et godt minde.','Julekort: Den eneste anledning, hvor man skriver "vi har det godt", mens opvasken står i bunker.','Jeg taler uden mund og hører uden ører. Jeg har ingen krop, men vågner til live med vinden. Hvad er jeg?','Et ekko.','Adventskransen går tilbage til 1830erne, hvor den tyske præst Johann Hinrich Wichern brugte lys til at tælle ned til jul for børn på et børnehjem.'],
+['Klementinen','Læg en lille uventet julegave, fx en klementin eller et stykke chokolade, hos en kollega, nabo eller ven.','En klementin er julens svar på en high five.','Fem personer skal dele fem æbler, så hver får ét, men ét æble skal blive i kurven. Hvordan?','Den sidste person tager kurven med æblet i.','Forskning peger på, at små, venlige handlinger løfter humøret hos giveren, ikke kun hos modtageren.'],
+['Årets bedste','Spørg ved juleaftensbordet: "Hvad var det bedste, der skete for dig i år?" Lyt til alle svarene.','Juleaften er den eneste dag, hvor "bare en lille én mere" er en hel portion risalamande.','Hvad kan du holde, uden at røre det?','Et løfte.','Mange danske familier har en mandel i risalamanden, og vinderen får en mandelgave.'],
+['Godt nytår, personligt','Ønsk én person godt nytår med en personlig besked om, hvad du glæder dig til at opleve med dem.','Nytårsforsæt: Jeg vil være en bedre version af mig selv, bare ikke før den 2. januar.','Hvad bliver til mere, jo mere du deler det?','Glæde. Venlighed og viden passer også.','En gammel dansk skik er at smadre tallerkener mod venners døre nytårsaften. Jo flere skår, jo flere venner.']];
+const ds=[];let d=new Date(2026,9,15);for(let i=0;i<T.length;i++){ds.push(new Date(d));d.setDate(d.getDate()+7)}
+const mn=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+const full=['januar','februar','marts','april','maj','juni','juli','august','september','oktober','november','december'];
+let done={},peek=false;
+try{done=JSON.parse(localStorage.getItem('hygge26')||'{}')}catch(e){}
+const save=()=>{try{localStorage.setItem('hygge26',JSON.stringify(done))}catch(e){}};
+const $=id=>document.getElementById(id);
+function render(){const t0=new Date();t0.setHours(0,0,0,0);const g=$('grid');g.innerHTML='';let nx=-1;
+T.forEach((o,i)=>{const dt=ds[i],isOpen=dt<=t0,locked=!isOpen&&!peek;if(!isOpen&&nx<0)nx=i;
+const b=document.createElement('button');b.className='door';
+b.innerHTML=dt.getDate()+'. '+mn[dt.getMonth()]+'<small>'+(locked?'🔒':'💞')+'</small>';
+if(locked)b.classList.add('lock');if(dt.getTime()==t0.getTime())b.classList.add('today');if(done[i])b.classList.add('done');
+b.onclick=()=>{if(locked){b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),400);return}open(i)};g.appendChild(b)});
+const n=Object.keys(done).length;$('bar').firstChild.style.width=n/T.length*100+'%';
+$('sub').textContent=n+' af '+T.length+' torsdage hygget · 15. oktober–31. december';
+$('next').textContent=nx<0?'Alle låger er åbne – hvor har du været sød!':'Næste låge åbner torsdag den '+ds[nx].getDate()+'. '+full[ds[nx].getMonth()]}
+function open(i){const o=T[i],dt=ds[i],c=$('card');
+c.innerHTML='<small>Torsdag den '+dt.getDate()+'. '+full[dt.getMonth()]+'</small><h2>'+o[0]+'</h2>'+
+'<h3>💞 Dagens hyggeidé</h3><p>'+o[1]+'</p><h3>😄 Dagens smil</h3><p>'+o[2]+'</p>'+
+'<h3>🧩 Dagens gåde</h3><p>'+o[3]+'</p><button class="btn alt sm" id="sv">Vis svar</button><div id="ans"></div>'+
+'<h3>💡 Dagens fakta</h3><p>'+o[5]+'</p>'+
+'<div><button class="btn" id="dn">'+(done[i]?'Fortryd':'Jeg har hygget!')+'</button><button class="btn alt" id="cl">Luk</button></div>';
+$('ov').style.display='flex';$('cl').onclick=close;
+$('sv').onclick=()=>{$('ans').textContent='Svar: '+o[4]};
+$('dn').onclick=()=>{if(done[i])delete done[i];else done[i]=1;save();render();close()}}
+function close(){$('ov').style.display='none'}
+$('ov').onclick=e=>{if(e.target.id=='ov')close()};
+$('peek').onclick=()=>{peek=!peek;$('peek').textContent=peek?'🔒 Prøvetilstand slået fra – lås låger igen':'👀 Prøve: åbn alle låger';$('peek').classList.toggle('on',peek);render()};
+render();
+</script></body></html>
